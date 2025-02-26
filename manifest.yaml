@@ -17,7 +17,7 @@ builder:
   dockerfile: ./Dockerfile
 
 spec:
-  operator: pytorch
+  operator: batchjob # or kuberay
   image: image
   command: "torchrun --nproc_per_node 2 main.py --mixed_precision fp16 --batch_size 24" # --nproc_per_node=={Number of GPUs}
 
@@ -35,3 +35,7 @@ spec:
             count: 0
             type: gpu
             product: Tesla-V100-SXM3-32GB
+
+
+  restartPolicy:
+    backoffLimit: 5
