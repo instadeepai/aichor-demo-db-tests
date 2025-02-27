@@ -15,7 +15,7 @@ from transformers import get_linear_schedule_with_warmup, set_seed
 from accelerate import Accelerator
 from accelerate.utils import ProjectConfiguration
 
-from utils import get_dataset, get_tokenizer, get_model, save_final_model, TENSORBOARD_PATH, AWS_ENDPOINT_URL, save_checkpoint, load_checkpoint, get_last_checkpoint_path, terminate_training_and_checkpoint
+from utils import get_dataset, get_tokenizer, get_model, save_final_model, TENSORBOARD_PATH, AWS_ENDPOINT_URL, save_checkpoint, load_checkpoint, get_last_checkpoint_path
 SEED = 42
 
 LOCAL_PROJECT_DIR: str = "logs"
