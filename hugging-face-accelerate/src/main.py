@@ -136,7 +136,7 @@ def training_function(args: argparse.Namespace):
 
         def terminate_training_and_checkpoint():
             print("SIGTERM received, checkpointing ...")    
-            save_checkpoint(accelerator=accelerator, epoch=epoch, checkpoint_dir=args.checkpoint_dir, s3=s3)
+            save_checkpoint(accelerator=accelerator, epoch=str(epoch).ljust(str(args.num_epochs).len(), "0"), checkpoint_dir=args.checkpoint_dir, s3=s3)
             print("Terminated training")
 
         signal.signal(signal.SIGTERM, terminate_training_and_checkpoint)
@@ -185,7 +185,7 @@ def training_function(args: argparse.Namespace):
 
         # Save checkpoint if enabled
         if args.enable_checkpointing and (epoch + 1) % args.checkpoint_interval == 0:
-            save_checkpoint(accelerator=accelerator, epoch=epoch, checkpoint_dir=args.checkpoint_dir, s3=s3)
+            save_checkpoint(accelerator=accelerator, epoch=str(epoch).ljust(str(args.num_epochs).len(), "0"), checkpoint_dir=args.checkpoint_dir, s3=s3)
 
     accelerator.wait_for_everyone()
     if accelerator.is_main_process:
