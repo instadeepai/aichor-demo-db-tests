@@ -1,6 +1,7 @@
 import os
 import time
 import argparse
+import signal
 
 import s3fs
 
