@@ -134,7 +134,7 @@ def training_function(args: argparse.Namespace):
         print("Start training")
         start_time = time.time()
 
-        def terminate_training_and_checkpoint(*args, **kwargs):
+        def terminate_training_and_checkpoint():
             print("SIGTERM received, checkpointing ...")    
             save_checkpoint(accelerator=accelerator, epoch=epoch, checkpoint_dir=args.checkpoint_dir, s3=s3)
             print("Terminated training")
