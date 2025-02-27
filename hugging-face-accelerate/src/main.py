@@ -1,7 +1,6 @@
 import os
 import time
 import argparse
-import signal
 
 import s3fs
 
@@ -16,6 +15,7 @@ from accelerate import Accelerator
 from accelerate.utils import ProjectConfiguration
 
 from utils import get_dataset, get_tokenizer, get_model, save_final_model, TENSORBOARD_PATH, AWS_ENDPOINT_URL, save_checkpoint, load_checkpoint, get_last_checkpoint_path
+
 SEED = 42
 
 LOCAL_PROJECT_DIR: str = "logs"
@@ -118,7 +118,6 @@ def training_function(args: argparse.Namespace):
     )
 
     starting_epoch = 0
-    epoch = 0
 
     if accelerator.is_main_process and args.enable_checkpointing:
         checkpoint_path = args.load_checkpoint_name
@@ -129,19 +128,10 @@ def training_function(args: argparse.Namespace):
     
     accelerator.wait_for_everyone()
 
-    checkpoint_dir = args.checkpoint_dir
-
     # Now we train the model
     if accelerator.is_main_process:
         print("Start training")
         start_time = time.time()
-
-        def terminate_training_and_checkpoint(*args, **kwargs):
-            print("SIGTERM received, checkpointing ...")    
-            save_checkpoint(accelerator=accelerator, epoch=str(epoch).rjust(len(str(args.num_epochs)), "0"), checkpoint_dir=checkpoint_dir, s3=s3)
-            print("Terminated training")
-
-        signal.signal(signal.SIGTERM, terminate_training_and_checkpoint)
 
     for epoch in range(starting_epoch, args.num_epochs):
         model.train()
@@ -187,7 +177,7 @@ def training_function(args: argparse.Namespace):
 
         # Save checkpoint if enabled
         if args.enable_checkpointing and (epoch + 1) % args.checkpoint_interval == 0:
-            save_checkpoint(accelerator=accelerator, epoch=str(epoch).rjust(len(str(args.num_epochs)), "0"), checkpoint_dir=args.checkpoint_dir, s3=s3)
+            save_checkpoint(accelerator=accelerator, epoch=epoch, num_epochs=args.num_epochs, checkpoint_dir=args.checkpoint_dir, s3=s3)
 
     accelerator.wait_for_everyone()
     if accelerator.is_main_process:

@@ -111,7 +111,8 @@ def save_final_model(accelerator: Accelerator, model, s3: S3FileSystem):
 
     accelerator.wait_for_everyone()
 
-def save_checkpoint(accelerator: Accelerator, epoch: str, checkpoint_dir: str, s3: S3FileSystem):
+def save_checkpoint(accelerator: Accelerator, epoch: int, num_epochs: int, checkpoint_dir: str, s3: S3FileSystem):
+    epoch = str(epoch).rjust(len(str(num_epochs)), "0")
     output_path = f"s3://{os.environ.get(AICHOR_OUTPUT_BUCKET_NAME)}/{checkpoint_dir}/checkpoint_epoch_{epoch}"
     path = accelerator.save_state()
     if accelerator.is_main_process:
