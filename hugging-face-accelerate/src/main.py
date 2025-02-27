@@ -1,6 +1,7 @@
 import os
 import time
 import argparse
+import signal
 
 import s3fs
 
@@ -132,6 +133,8 @@ def training_function(args: argparse.Namespace):
     if accelerator.is_main_process:
         print("Start training")
         start_time = time.time()
+
+        signal.signal(signal.SIGTERM, terminate_training_and_checkpoint, accelerator=accelerator, epoch=epoch, checkpoint_dir=args.checkpoint_dir, s3=s3)
 
     for epoch in range(starting_epoch, args.num_epochs):
         model.train()

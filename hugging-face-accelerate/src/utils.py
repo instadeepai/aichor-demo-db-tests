@@ -155,3 +155,13 @@ def get_last_checkpoint_path(checkpoint_dir: str, s3: S3FileSystem):
                 return f"s3://{directory['Key']}"
 
     return None
+
+def terminate_training_and_checkpoint(*args, **kwargs):
+    print("SIGTERM received, checkpointing ...")    
+    save_checkpoint(
+        accelerator = kwargs['accelerator'],
+        epoch = kwargs['epoch'],
+        checkpoint_dir = kwargs['checkpoint_dir'],
+        s3 = kwargs['s3']
+    )
+    print("Terminated training")
