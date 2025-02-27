@@ -19,7 +19,7 @@ builder:
 spec:
   operator: batchjob # or kuberay
   image: image
-  command: "torchrun --nproc_per_node 1 main.py --mixed_precision bf16 --batch_size=40 --num_epochs=48" # --nproc_per_node=={Number of GPUs}
+  command: "torchrun --nproc_per_node 1 main.py --batch_size 200 --enable_checkpointing true --checkpoint_dir checkpoint_reload --num_epochs 200 --checkpoint_interval 10 --model openai-community/gpt2" # --nproc_per_node=={Number of GPUs}
 
   restartPolicy:
     backoffLimit: 5
@@ -31,11 +31,11 @@ spec:
     Worker:
       count: 1
       resources:
-        cpus: 2
-        ramRatio: 16 # 32GB
+        cpus: 16
+        ramRatio: 4
         accelerators: # optional
           gpu:
-            count: 1 # note that setting more than 1 MIG device per container is useless since only one will be usable https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html#cuda-device-enumeration
+            count: 2 # note that setting more than 1 MIG device per container is useless since only one will be usable https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html#cuda-device-enumeration
             type: gpu
             product: NVIDIA-H100-80GB-HBM3
 
