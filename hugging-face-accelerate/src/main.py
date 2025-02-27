@@ -118,6 +118,7 @@ def training_function(args: argparse.Namespace):
     )
 
     starting_epoch = 0
+    epoch = 0
 
     if accelerator.is_main_process and args.enable_checkpointing:
         checkpoint_path = args.load_checkpoint_name
@@ -133,7 +134,12 @@ def training_function(args: argparse.Namespace):
         print("Start training")
         start_time = time.time()
 
-        signal.signal(signal.SIGTERM, terminate_training_and_checkpoint, accelerator=accelerator, epoch=epoch, checkpoint_dir=args.checkpoint_dir, s3=s3)
+        def terminate_training_and_checkpoint(*args, **kwargs):
+            print("SIGTERM received, checkpointing ...")    
+            save_checkpoint(accelerator=accelerator, epoch=epoch, checkpoint_dir=args.checkpoint_dir, s3=s3)
+            print("Terminated training")
+
+        signal.signal(signal.SIGTERM, terminate_training_and_checkpoint)
 
     for epoch in range(starting_epoch, args.num_epochs):
         model.train()
