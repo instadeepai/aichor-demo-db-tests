@@ -132,6 +132,16 @@ def training_function(args: argparse.Namespace):
     if accelerator.is_main_process:
         print("Start training")
         start_time = time.time()
+    
+    epoch = 0
+
+    def handle_sigterm(signum, frame):
+        """Signal handler for SIGTERM."""
+        save_checkpoint(accelerator=accelerator, epoch=epoch, num_epochs=args.num_epochs, checkpoint_dir=args.checkpoint_dir, s3=s3)
+        print("Termination signal received. Exiting gracefully.")
+        exit(0)
+    
+    signal.signal(signal.SIGTERM, handle_sigterm)
 
     for epoch in range(starting_epoch, args.num_epochs):
         model.train()
