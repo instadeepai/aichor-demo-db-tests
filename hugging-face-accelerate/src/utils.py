@@ -11,7 +11,8 @@ from s3fs import S3FileSystem
 AWS_ENDPOINT_URL: str = "AWS_ENDPOINT_URL"
 AICHOR_INPUT_PATH: str = "AICHOR_INPUT_PATH"
 AICHOR_OUTPUT_PATH: str = "AICHOR_OUTPUT_PATH"
-TENSORBOARD_PATH: str = "AICHOR_TENSORBOARD_PATH"
+AICHOR_OUTPUT_BUCKET_NAME: str = "AICHOR_OUTPUT_BUCKET_NAME"
+TENSORBOARD_PATH: str = "AICHOR_LOGS_PATH"
 
 HF_TOKEN: str = "HF_TOKEN"
 
@@ -33,8 +34,7 @@ def get_tokenizer(accelerator: Accelerator, s3: S3FileSystem, model_name: str) -
         should_save_to_s3 = True
 
     accelerator.wait_for_everyone() # wait for local main process to finish downloading the tokenizer from s3
-    # tokenizer = AutoTokenizer.from_pretrained(load_from, token=os.environ.get(HF_TOKEN))
-    tokenizer = AutoTokenizer.from_pretrained(load_from)
+    tokenizer = AutoTokenizer.from_pretrained(load_from, token=os.environ.get(HF_TOKEN))
 
     accelerator.wait_for_everyone() # wait for all tokenizer loaded on all processes
 
@@ -69,8 +69,7 @@ def get_model(accelerator: Accelerator, s3: S3FileSystem, model_name: str):
         should_save_to_s3 = True
 
     accelerator.wait_for_everyone() # wait for local main process to finish downloading the tokenizer from s3
-    # model = AutoModelForSequenceClassification.from_pretrained(load_from, token=os.environ.get(HF_TOKEN))
-    model = AutoModelForSequenceClassification.from_pretrained(load_from)
+    model = AutoModelForSequenceClassification.from_pretrained(load_from, token=os.environ.get(HF_TOKEN))
 
     # cleanup downloaded model from S3 from local main process
     if (not should_save_to_s3) and accelerator.is_local_main_process:
@@ -111,3 +110,48 @@ def save_final_model(accelerator: Accelerator, model, s3: S3FileSystem):
         print("Uploaded")
 
     accelerator.wait_for_everyone()
+
+def save_checkpoint(accelerator: Accelerator, epoch: int, checkpoint_dir: str, s3: S3FileSystem):
+    output_path = f"s3://{os.environ.get(AICHOR_OUTPUT_BUCKET_NAME)}/{checkpoint_dir}/checkpoint_epoch_{epoch}"
+    path = accelerator.save_state()
+    if accelerator.is_main_process:
+        s3.put(path, output_path, recursive=True)
+        # saving a "valid" file to make sure that checkpoint was fully saved.
+        with s3.open(f"{output_path}/valid", "w") as f:
+            f.write("1")
+            f.flush()
+        print(f"Checkpoint saved at {output_path}")
+    accelerator.wait_for_everyone()
+    
+
+def load_checkpoint(accelerator: Accelerator, checkpoint_path: str, s3: S3FileSystem):
+    if accelerator.is_local_main_process:
+        checkpoint_local_path = "tmp_checkpoint"
+        print(f"Loading checkpoint from {checkpoint_path}")
+        s3.get(checkpoint_path, checkpoint_local_path, recursive=True)
+    accelerator.wait_for_everyone()
+    accelerator.load_state(checkpoint_local_path)
+    if accelerator.is_local_main_process:
+        shutil.rmtree(checkpoint_local_path)
+
+    # get epoch from checkpoint name
+    checkpoint_name = checkpoint_path.split('/')[-1]
+    epoch = int(checkpoint_name.replace("checkpoint_epoch_", "")) + 1
+    return epoch
+
+def get_last_checkpoint_path(checkpoint_dir: str, s3: S3FileSystem):
+    checkpoint_dir_full = f"s3://{os.environ.get(AICHOR_OUTPUT_BUCKET_NAME)}/{checkpoint_dir}"
+    try:
+        dirs = s3.listdir(checkpoint_dir_full)
+    except FileNotFoundError:
+        print(f"Couldn't find checkpoint at {checkpoint_dir_full}, starting from epoch 0")
+        return None
+    sorted_dirs = sorted(dirs, key=lambda x: x['Key'], reverse=True)
+    for directory in sorted_dirs:
+        directory_key = directory['Key']
+        files_in_dir = s3.listdir(f"s3://{directory_key}")
+        for file in files_in_dir:
+            if file['Key'].endswith('/valid'):
+                return f"s3://{directory['Key']}"
+
+    return None
